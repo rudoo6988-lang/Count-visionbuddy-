@@ -59,11 +59,25 @@ export const Hero = ({ onJoin }: { onJoin: () => void }) => {
 
       // Increment counter
       const statsRef = doc(db, 'stats', 'global');
-      batch.update(statsRef, {
+      
+      // We use set with merge: true to ensure the document exists
+      // If it doesn't exist, it will create it. If it does, it will increment.
+      batch.set(statsRef, {
         waitlistCount: increment(1)
-      });
+      }, { merge: true });
 
       await batch.commit();
+
+      // Trigger Email Notification via Backend
+      try {
+        await fetch('/api/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, ipAddress: ip })
+        });
+      } catch (notifyErr) {
+        console.error("Notification failed:", notifyErr);
+      }
 
       setSuccess(true);
       onJoin();

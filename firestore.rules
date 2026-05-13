@@ -56,11 +56,13 @@ service cloud.firestore {
     match /stats/global {
       allow get: if true;
       allow list: if isAdmin();
+      allow create: if incoming().keys().hasAll(['waitlistCount']) && 
+                      incoming().waitlistCount >= 5000;
       allow update: if 
-                      incoming().waitlistCount == existing().waitlistCount + 1 &&
+                      (existing() == null || incoming().waitlistCount == existing().waitlistCount + 1) &&
                       incoming().keys().hasAll(['waitlistCount']) &&
                       incoming().keys().size() == 1;
-      allow create, delete: if isAdmin();
+      allow delete: if isAdmin();
     }
 
     match /stats/{docId} {
