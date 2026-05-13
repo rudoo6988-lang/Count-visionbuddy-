@@ -1,0 +1,43 @@
+{
+  "entities": {
+    "WaitlistEntry": {
+      "title": "Waitlist Entry",
+      "description": "Information about a user who joined the waitlist",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "The user's name" },
+        "email": { "type": "string", "description": "The user's email address" },
+        "ipAddress": { "type": "string", "description": "The user's IP address" },
+        "joinedAt": { "type": "string", "format": "date-time", "description": "When the user joined the waitlist" }
+      },
+      "required": ["name", "email", "ipAddress", "joinedAt"]
+    },
+    "Stats": {
+      "title": "Application Stats",
+      "description": "Global statistics for the application",
+      "type": "object",
+      "properties": {
+        "waitlistCount": { "type": "integer", "description": "Total number of people on the waitlist" }
+      },
+      "required": ["waitlistCount"]
+    }
+  },
+  "firestore": {
+    "/waitlist/{entryId}": {
+      "schema": "WaitlistEntry",
+      "description": "Collection of waitlist entries"
+    },
+    "/used_ips/{ip}": {
+      "schema": "object",
+      "description": "Track used IPs to prevent double submissions"
+    },
+    "/stats/global": {
+      "schema": "Stats",
+      "description": "Global stats document"
+    },
+    "/admins/{uid}": {
+      "schema": "object",
+      "description": "Admin users"
+    }
+  }
+}

@@ -1,0 +1,77 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidWaitlistEntry(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.email is string && data.email.size() > 0 && data.email.size() <= 200 &&
+             data.email.matches('^[^@]+@[^@]+\\.[^@]+$') &&
+             data.ipAddress is string && data.ipAddress.size() > 7 && data.ipAddress.size() <= 45 &&
+             data.joinedAt == request.time;
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Waitlist collection
+    match /waitlist/{entryId} {
+      allow create: if isValidId(entryId) && 
+                      isValidWaitlistEntry(incoming()) && 
+                      !exists(/databases/$(database)/documents/used_ips/$(incoming().ipAddress)) &&
+                      existsAfter(/databases/$(database)/documents/used_ips/$(incoming().ipAddress));
+      allow read, update, delete: if isAdmin();
+    }
+
+    // IP Tracking
+    match /used_ips/{ip} {
+      allow create: if !exists(/databases/$(database)/documents/used_ips/$(ip)) &&
+                      isValidId(ip);
+      allow read: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Stats
+    match /stats/global {
+      allow get: if true;
+      allow list: if isAdmin();
+      allow update: if 
+                      incoming().waitlistCount == existing().waitlistCount + 1 &&
+                      incoming().keys().hasAll(['waitlistCount']) &&
+                      incoming().keys().size() == 1;
+      allow create, delete: if isAdmin();
+    }
+
+    match /stats/{docId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // Admins
+    match /admins/{uid} {
+      allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+      allow write: if false; // Only manageable via console for safety in this demo
+    }
+  }
+}
